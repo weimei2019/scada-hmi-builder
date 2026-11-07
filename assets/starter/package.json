@@ -1,0 +1,2 @@
+{ "name": "scada-25d-project", "private": true,
+  "dependencies": { "three": "0.170.0", "html-to-image": "^1.11.11", "playwright": "^1.48.0" } }

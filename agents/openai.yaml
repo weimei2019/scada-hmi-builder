@@ -1,0 +1,4 @@
+interface:
+  display_name: "SCADA 2.5D Builder"
+  short_description: "制作带设备台账、工艺仿真、报警联锁与素材导出的三维组态演示"
+  default_prompt: "使用 $scada-25d-builder 制作一个带备用泵切换、报警和设备详情的污水处理组态演示。"

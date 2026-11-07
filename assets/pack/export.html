@@ -1,0 +1,496 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>asset pack exporter</title>
+<script type="importmap">
+{ "imports": { "three": "../../node_modules/three/build/three.module.js", "three/addons/": "../../node_modules/three/examples/jsm/" } }
+</script></head>
+<body>
+<script type="module">
+// 组态素材包导出器：在页面里搭出整厂场景，逐台导出 GLB + 透明底 PNG 图标 + 4 视角 SVG + 状态版 + 布局 / 点位 JSON。：在页面里搭出整厂场景，逐台导出 GLB + 透明底 PNG 图标 + 布局 / 点位 JSON。
+// 由 build-pack.mjs 驱动，结果挂在 window.__pack。
+import * as THREE from 'three';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
+import * as F from '../../js/factory.js';
+import { buildPlant } from '../../js/plant.js';
+import * as Sim from '../../js/sim.js';        // 台账 DEV（点位清单用）；没有台账就删掉这行并让 tags 为空
+
+// ---- 项目配置（新项目改这里）-------------------------------------------------------------
+// 设备标题 → 英文文件名；没写的自动用 asset_序号。标题 = plant.js 里 sel(group, title, …) 的 title（去掉括号里的补充说明）
+const SLUG = { /* '调节池': 'equalization_tank', '提升泵 1#': 'lift_pump_1', */ };
+// 设备标题 → 工段名（状态版按“工段 / 设备 / 状态”分目录）；没写的归“设备”
+const AREA_OF = { /* '调节池': '预处理', */ };
+// 额外点位（工艺量、PID 输出、设定值等）：[id, 名称, 单位]
+const EXTRA_TAGS = [ /* ['ph_sp', 'pH 设定值', ''] */ ];
+// 文件名里的项目前缀不用写，导出目录由 build-pack.mjs 的 PROJECT 决定
+// ------------------------------------------------------------------------------------------
+
+for (const [k, m] of Object.entries(F.M)) m.name = k;              // 材质名带进 GLB，导入后好认
+for (const k of Object.keys(F.PIPE_COLORS)) F.pipeMat(k).name = `pipe_${k}`;
+
+const scene = new THREE.Scene();
+const plant = buildPlant(scene);
+scene.updateMatrixWorld(true);
+// 设备贴花（透明圆柱面 + 文字 / logo 贴图）：打标记，SVG 里贴花改成嵌入图片
+scene.traverse(o => { if (o.isMesh && o.material.map && o.material.transparent && o.geometry.type === 'CylinderGeometry' && o.geometry.parameters.openEnded) o.userData.decal = true; });
+
+
+// ---------------------------------------------------------------- 水面烘焙：把着色器画面（深浅色块 / 波纹 / 泡沫）固化成贴图
+// glTF 带不了着色器，但贴图任何编辑器都认。贴图按水面世界坐标俯视渲染（着色器用的就是世界 xz），与网页一致。
+function bakeWater() {
+  const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  R.setClearColor(0x000000, 0); R.outputColorSpace = THREE.SRGBColorSpace;
+  F.waterUniforms.uTime.value = 14;
+  const PPM = 28, jobs = [];
+  scene.traverse(o => { if (o.isMesh && o.material.isShaderMaterial) jobs.push(o); });
+  for (const mesh of jobs) {
+    const bb = new THREE.Box3().setFromObject(mesh), c = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
+    const W = Math.min(1024, Math.ceil(sz.x * PPM)), H = Math.min(1024, Math.ceil(sz.z * PPM));
+    const cam = new THREE.OrthographicCamera(-sz.x / 2, sz.x / 2, sz.z / 2, -sz.z / 2, 1, 400);
+    cam.up.set(0, 0, -1); cam.position.set(c.x, bb.max.y + 50, c.z); cam.lookAt(c.x, c.y, c.z); cam.updateMatrixWorld(true);
+    const m = new THREE.Mesh(mesh.geometry, mesh.material); m.matrixAutoUpdate = false; m.matrix.copy(mesh.matrixWorld);
+    const sc = new THREE.Scene(); sc.add(m);
+    const bub = mesh.material.uniforms.uBubbles.value; mesh.material.uniforms.uBubbles.value = 0;   // 气泡另有动画，不烘进静态图
+    R.setPixelRatio(1); R.setSize(W, H, false); R.render(sc, cam);
+    mesh.material.uniforms.uBubbles.value = bub;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(R.domElement, 0, 0);
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, name: 'water' });   // 不受光：和网页里的水面一样，在任何编辑器光照下颜色不变
+    mat.userData.baked = cv;
+    mesh.material = mat;
+  }
+  R.dispose();
+  return jobs.length;
+}
+const nBaked = bakeWater();
+console.log('baked water meshes:', nBaked);
+
+// ---------------------------------------------------------------- 清理：去掉流动叠加层
+const waterMats = new Map();
+function waterStd(sm) {
+  const key = sm.uuid;
+  if (!waterMats.has(key)) {
+    const c = sm.uniforms.uDeep.value.clone().lerp(sm.uniforms.uLight.value, 0.35);
+    waterMats.set(key, new THREE.MeshStandardMaterial({ color: c, roughness: 0.12, metalness: 0.05, transparent: true, opacity: 0.92, name: 'water' }));
+  }
+  return waterMats.get(key);
+}
+function clean(root) {
+  const kill = [];
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const mats = [].concat(o.material);
+    if (mats.some(m => m.blending === THREE.AdditiveBlending)) { kill.push(o); return; }   // 管道流动贴图层
+    if (mats.some(m => m.isShaderMaterial)) o.material = waterStd(mats[0]);
+  });
+  kill.forEach(o => o.parent.remove(o));
+  return root;
+}
+
+function bboxOf(o) { return new THREE.Box3().setFromObject(o); }
+function r3(v) { return +v.toFixed(3); }
+
+// 把一个已摆好位置的对象“归零”：以包围盒底面中心为锚点平移到原点，返回 { node, anchor, size }
+function recentre(obj, name) {
+  const b = bboxOf(obj);
+  const anchor = new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2);
+  const holder = new THREE.Group(); holder.name = name;
+  const inner = obj.clone(true); inner.name = name + '_body';
+  // 世界矩阵烘进去：先去掉自身变换，再用世界矩阵还原
+  inner.matrix.copy(obj.matrixWorld); inner.matrix.decompose(inner.position, inner.quaternion, inner.scale);
+  inner.position.sub(anchor);
+  holder.add(inner);
+  clean(holder);
+  const size = b.getSize(new THREE.Vector3());
+  return { node: holder, anchor, size };
+}
+
+// ---------------------------------------------------------------- 收集
+const items = [];            // { id, slug, title, node, anchor, size, rows }
+const selSet = new Set(plant.selectables.map(s => s.group));
+let n = 0;
+for (const s of plant.selectables) {
+  const title = s.title.replace(/（.*）/, '');
+  const slug = SLUG[title] || `asset_${n}`;
+  const id = String(++n).padStart(2, '0') + '_' + slug;
+  const r = recentre(s.group, slug);
+  items.push({ id, slug, title, kind: 'equipment', ...r, rows: s.rows() });
+}
+// 非选中的普通摆件：平台、管道出口箭头
+const pipes = [];
+let pi = 0, ai = 0;
+for (const c of scene.children) {
+  if (selSet.has(c)) continue;
+  if (c.userData.pipe) { pipes.push(c); continue; }
+  const isPlat = c.isGroup;
+  const slug = isPlat ? `platform_${String(++pi).padStart(2, '0')}` : `arrow_${String(++ai).padStart(2, '0')}`;
+  const id = String(++n).padStart(2, '0') + '_' + slug;
+  const r = recentre(c, slug);
+  items.push({ id, slug, title: isPlat ? '地面平台' : '出口箭头', kind: isPlat ? 'platform' : 'marker', ...r, rows: [] });
+}
+// 通用小件库（单台，原点）
+const lib = [
+  ['pump', '离心泵', () => F.pump()],
+  ['mixer', '立式搅拌机', () => F.mixer({ shaft: 3.4 })],
+  ['valve_h', '阀门（横管）', () => F.valve('x')],
+  ['valve_v', '阀门（立管）', () => F.valve('y')],
+  ['arrow_head', '管道箭头', () => F.arrowHead('water', 0.5)],
+];
+const libItems = lib.map(([slug, title, mk]) => {
+  const o = mk(); const root = new THREE.Group(); root.add(o); root.updateMatrixWorld(true);
+  const r = recentre(o, slug); return { id: slug, slug, title, kind: 'part', ...r, rows: [] };
+});
+
+// ---------------------------------------------------------------- 中文文件名
+const safe = t => t.replace(/[\s/\\:*?"<>|]/g, '');
+const kindCount = {};
+for (const it of items) {
+  const num = it.id.split('_')[0];
+  if (it.kind === 'equipment') it.file = `${num}_${safe(it.title)}`;
+  else { kindCount[it.kind] = (kindCount[it.kind] || 0) + 1; it.file = `${num}_${safe(it.title)}_${String(kindCount[it.kind]).padStart(2, '0')}`; }
+}
+for (const it of libItems) it.file = safe(it.title);
+
+
+for (const it of items) if (it.kind === 'equipment') it.area = AREA_OF[it.title] || '设备';
+
+// ---------------------------------------------------------------- 管线
+const pipeList = pipes.map((p, i) => ({
+  id: `pipe_${String(i + 1).padStart(3, '0')}`, kind: p.userData.kind, radius: r3(p.userData.r),
+  length: r3(p.userData.len), points: p.userData.pts.map(q => q.map(r3)),
+}));
+const pipeGroup = new THREE.Group(); pipeGroup.name = 'pipes';
+pipes.forEach((p, i) => { const c = p.clone(true); c.name = pipeList[i].id; pipeGroup.add(c); });
+clean(pipeGroup);
+
+// ---------------------------------------------------------------- GLB / PNG
+const exporter = new GLTFExporter();
+
+// 结构件旋转 → glTF 动画（绕 Y 匀速）。每种部件一个 clip，周期各自独立：搅拌桨 ≈1.6 s/圈，刮泥桥 ≈105 s/圈
+function spinClips(root) {
+  const byType = {}; const cnt = {};
+  root.traverse(o => {
+    const a = o.userData?.anim; if (!a) return;
+    cnt[a.name] = (cnt[a.name] || 0) + 1;
+    o.name = `${a.name}_${cnt[a.name]}`;                      // 节点重名会让动画绑到第一个，必须唯一
+    (byType[a.name] ||= { speed: a.speed, nodes: [] }).nodes.push(o);
+  });
+  // 气泡：周期 2.4 s，生命期内由小变大，到 75% 处收掉
+  const bub = []; let bi = 0;
+  root.traverse(o => { if (o.userData?.bubble) { o.name = `bubble_${++bi}`; bub.push(o); } });
+  const clips = [];
+  if (bub.length) {
+    const T = 2.4, K = 24, times = [], tracks = [];
+    for (let i = 0; i <= K; i++) times.push(T * i / K);
+    for (const o of bub) {
+      const { phase, size } = o.userData.bubble, v = [];
+      for (let i = 0; i <= K; i++) {
+        const u = (i / K + phase) % 1;
+        const k = u < 0.7 ? 0.2 + 0.8 * (u / 0.7) : Math.max(0.001, 1 - (u - 0.7) / 0.04);   // 小→大，随后迅速消失
+        const sc = u < 0.74 ? size * k : 0.001;
+        v.push(sc, sc, sc);
+      }
+      tracks.push(new THREE.VectorKeyframeTrack(`${o.name}.scale`, times, v));
+    }
+    clips.push(new THREE.AnimationClip('aeration_bubbles', T, tracks));
+  }
+  return clips.concat(Object.entries(byType).map(([nm, { speed, nodes }]) => {
+    const T = 2 * Math.PI / speed, K = 8, times = [], tracks = [];
+    for (let i = 0; i <= K; i++) times.push(T * i / K);
+    for (const o of nodes) {
+      const q = [], base = o.rotation.y, e = new THREE.Euler(), qq = new THREE.Quaternion();
+      for (let i = 0; i <= K; i++) { e.set(o.rotation.x, base + 2 * Math.PI * i / K, o.rotation.z); qq.setFromEuler(e); q.push(qq.x, qq.y, qq.z, qq.w); }
+      tracks.push(new THREE.QuaternionKeyframeTrack(`${o.name}.quaternion`, times, q));
+    }
+    return new THREE.AnimationClip(`${nm}_spin`, T, tracks);
+  }));
+}
+async function glb(node, anim = true) {
+  const animations = anim ? spinClips(node) : [];
+  const buf = await exporter.parseAsync(node, { binary: true, onlyVisible: true, maxTextureSize: 1024, animations });
+  let s = ''; const u8 = new Uint8Array(buf);
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const lightScene = new THREE.Scene();
+lightScene.add(new THREE.HemisphereLight('#ffffff', '#9fb0c4', 1.5));
+const sun = new THREE.DirectionalLight('#ffffff', 2.2); sun.position.set(-30, 60, 40); lightScene.add(sun);
+const fill = new THREE.DirectionalLight('#cfe2ff', 0.8); fill.position.set(40, 20, -30); lightScene.add(fill);
+
+async function hasPixels(url) {
+  const im = new Image(); im.src = url; await im.decode();
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0, 32, 32);
+  const d = g.getImageData(0, 0, 32, 32).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return true;
+  return false;
+}
+// 2.5D 等轴视角（和页面同款：从前方偏上看）
+function frame(node, px, { azim = 0.55, elev = 0.52, margin = 1.08 } = {}, scene = lightScene) {
+  const holder = new THREE.Group(); holder.add(node.clone(true)); scene.add(holder); holder.updateMatrixWorld(true);
+  const b = bboxOf(holder), c = b.getCenter(new THREE.Vector3());
+  const dir = new THREE.Vector3(Math.sin(azim) * Math.cos(elev), Math.sin(elev), Math.cos(azim) * Math.cos(elev));
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 2000);
+  cam.position.copy(c).addScaledVector(dir, 600); cam.lookAt(c); cam.updateMatrixWorld(true);
+  // 以八个角点在相机空间的范围定画幅
+  const inv = cam.matrixWorldInverse; let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) {
+    const v = new THREE.Vector3(x, y, z).applyMatrix4(inv); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
+  }
+  const w = x1 - x0, h = y1 - y0, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  const asp = w / h;
+  const W = asp >= 1 ? px : Math.max(16, Math.round(px * asp)), H = asp >= 1 ? Math.max(16, Math.round(px / asp)) : px;
+  cam.left = mx - w * margin / 2; cam.right = mx + w * margin / 2;
+  cam.top = my + h * margin / 2; cam.bottom = my - h * margin / 2;
+  cam.updateProjectionMatrix();
+  return { cam, W, H, holder };
+}
+async function sprite(node, px, opt = {}) {
+  const { cam, W, H, holder } = frame(node, px, opt);
+  renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+  // 无头 GPU 刚启动时前几次会读回全透明：检测到空白就等一帧重画
+  let url = '';
+  for (let t = 0; t < 30; t++) {
+    renderer.render(lightScene, cam);
+    url = renderer.domElement.toDataURL('image/png');
+    if (await hasPixels(url)) break;
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 120)));
+  }
+  lightScene.remove(holder);
+  return { png: url.split(',')[1], w: W, h: H };
+}
+
+
+// ---------------------------------------------------------------- SVG（矢量）
+// 三维模型按同一视角投影成多边形，逐面平涂 + 画家算法排序。贴图材质（网格地板 / 百叶 / 散热片）换成代表色。
+const MAP_COL = { vent: '#d3dce6', fin: '#aab6c4' };
+const svgMats = new Map();
+function svgMat(m) {
+  if (m.isMeshBasicMaterial) return m;
+  if (!svgMats.has(m.uuid)) {
+    const c = m.color.clone();
+    if (m.map) c.set(MAP_COL[m.name] || '#eef2f6');          // 平台网格顶面：浅灰白
+    c.lerp(new THREE.Color('#ffffff'), (m.metalness || 0) * 0.15);   // 金属件：补一点高光感
+    svgMats.set(m.uuid, new THREE.MeshLambertMaterial({ color: c, transparent: m.transparent, opacity: m.opacity, side: m.side }));
+  }
+  return svgMats.get(m.uuid);
+}
+
+// 大三角面按最长边递归对半切：画家算法按面心排序，整根罐身一张面会盖住或漏出压在它上面的箍带 / 栏杆
+const tessCache = new Map();
+function tess(geo, maxEdge = 2.2) {
+  const ck = geo.uuid + ':' + maxEdge;
+  if (tessCache.has(ck)) return tessCache.get(ck);
+  const g = geo.index ? geo.toNonIndexed() : geo.clone();
+  const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv;
+  const pos = [], nor = [], uv = [];
+  const V = (a, i) => new THREE.Vector3().fromBufferAttribute(a, i);
+  function emit(t) { for (const v of t) { pos.push(v.p.x, v.p.y, v.p.z); if (N) nor.push(v.n.x, v.n.y, v.n.z); if (U) uv.push(v.u.x, v.u.y); } }
+  function split(t, depth) {
+    const e = [[0, 1], [1, 2], [2, 0]].map(([i, j]) => t[i].p.distanceTo(t[j].p));
+    const k = e.indexOf(Math.max(...e));
+    if (e[k] <= maxEdge || depth > 16) return emit(t);
+    const [i, j] = [[0, 1], [1, 2], [2, 0]][k], l = 3 - i - j;
+    const m = { p: t[i].p.clone().add(t[j].p).multiplyScalar(0.5), n: N ? t[i].n.clone().add(t[j].n).normalize() : null, u: U ? t[i].u.clone().add(t[j].u).multiplyScalar(0.5) : null };
+    split([t[i], m, t[l]], depth + 1); split([m, t[j], t[l]], depth + 1);
+  }
+  for (let i = 0; i < P.count; i += 3) {
+    const t = [0, 1, 2].map(k => ({ p: V(P, i + k), n: N ? V(N, i + k) : null, u: U ? new THREE.Vector2().fromBufferAttribute(U, i + k) : null }));
+    split(t, 0);
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  if (N) out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  if (U) out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  tessCache.set(ck, out);
+  return out;
+}
+
+// 水面：切成 ~0.3 m 的小三角形，每个顶点从烘焙贴图取色 → 矢量里也有深浅变化
+const svgWaterMats = new Map();
+function svgWater(o) {
+  const cv = o.material.userData.baked, g = tess(o.geometry, 0.3), cx = cv.getContext('2d', { willReadFrequently: true });
+  const id = g.uuid + o.material.uuid;
+  if (!svgWaterMats.has(id)) {
+    const uv = g.attributes.uv, n = uv.count, col = new Float32Array(n * 3), tmp = new THREE.Color();
+    const data = cx.getImageData(0, 0, cv.width, cv.height).data;
+    for (let i = 0; i < n; i++) {
+      const px = Math.min(cv.width - 1, Math.max(0, Math.round(uv.getX(i) * (cv.width - 1)))), py = Math.min(cv.height - 1, Math.max(0, Math.round((1 - uv.getY(i)) * (cv.height - 1))));
+      const k = (py * cv.width + px) * 4; tmp.setRGB(data[k] / 255, data[k + 1] / 255, data[k + 2] / 255, THREE.SRGBColorSpace); col.set([tmp.r, tmp.g, tmp.b], i * 3);
+    }
+    const g2 = g.clone(); g2.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    svgWaterMats.set(id, g2);
+  }
+  o.geometry = svgWaterMats.get(id);
+  o.material = new THREE.MeshBasicMaterial({ vertexColors: true, side: o.material.side, name: 'water' });
+}
+const svgScene = new THREE.Scene();
+svgScene.add(new THREE.AmbientLight(new THREE.Color(0.40, 0.42, 0.45)));
+const sd = new THREE.DirectionalLight('#ffffff', 0.55); sd.position.set(-0.45, 0.75, 0.55); svgScene.add(sd);
+const sd2 = new THREE.DirectionalLight('#dfe9ff', 0.18); sd2.position.set(0.8, 0.3, -0.4); svgScene.add(sd2);
+const svgR = new SVGRenderer(); svgR.setPrecision(1); svgR.overdraw = 0.35;
+// page = 网页里的镜头：正对前方，俯仰 0.76 rad（距竖直）→ 仰角 ≈46°
+const VIEWS = { page: { azim: 0, elev: Math.PI / 2 - 0.76 }, iso: { azim: 0.55, elev: 0.52 }, front: { azim: 0, elev: 0.0 }, top: { azim: 0, elev: 1.5607 } };
+
+// 设备贴花 → <image>：圆柱面中心处的切线 / 竖直方向做仿射映射（文字在中间 ±30°，弧面形变很小）
+function svgDecal(m, cam, W, H, el) {
+  const geo = m.geometry.parameters, r = geo.radiusTop, hgt = geo.height;
+  m.updateWorldMatrix(true, false);
+  const proj = p => { const v = p.clone().project(cam); return new THREE.Vector2(v.x * W / 2, -v.y * H / 2); };
+  const W3 = p => m.localToWorld(p);
+  const c3 = W3(new THREE.Vector3(0, 0, r));
+  const facing = new THREE.Vector3(0, 0, 1).transformDirection(m.matrixWorld).dot(cam.position.clone().sub(c3).normalize());
+  if (facing < 0.25) return;                                           // 俯视时贴花侧着，不画
+  const c = proj(c3), hx = proj(W3(new THREE.Vector3(r * geo.thetaLength / 2, 0, r))).sub(c).multiplyScalar(2), vy = proj(W3(new THREE.Vector3(0, hgt / 2, r))).sub(c).multiplyScalar(2);
+  const img = m.material.map.image, w = img.width, h = img.height;
+  const tl = c.clone().sub(hx.clone().multiplyScalar(0.5)).add(vy.clone().multiplyScalar(0.5));
+  const im = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+  im.setAttribute('href', img.toDataURL('image/png')); im.setAttribute('width', w); im.setAttribute('height', h);
+  im.setAttribute('transform', `matrix(${hx.x / w} ${hx.y / w} ${-vy.x / h} ${-vy.y / h} ${tl.x} ${tl.y})`);
+  el.appendChild(im);
+}
+function svgOf(node, view, px = 640, name = '') {
+  const n = node.clone(true);
+  n.traverse(o => {
+    if (!o.isMesh) return;
+    // 画家算法的层次：池壁 / 内壁 → 水面 → 其余（压顶、栏杆、刮泥桥等）。否则内壁的碎三角会戳到水面上
+    const nm = [].concat(o.material)[0].name;
+    const two = [].concat(o.material)[0].side === THREE.DoubleSide;   // 开口罐的双面罐壁（污泥浓缩池）：内壁 / 罐底得先画，水面才盖得住
+    o.renderOrder = (nm === 'concrete' || nm === 'concreteIn' || two) ? 0 : nm === 'water' ? 1 : 2;
+    if (o.userData.decal) { o.visible = false; return; }                // 贴花不进多边形，后面按投影贴一张图
+    if (!Array.isArray(o.material) && o.material.userData.baked) { svgWater(o); return; }
+    if (Array.isArray(o.material)) o.material = o.material.map(svgMat);
+    else { o.material = svgMat(o.material); o.geometry = tess(o.geometry); }   // 多材质（带 groups）的几何体不切，它们都是小方盒
+  });
+  const { cam, W, H, holder } = frame(n, px, { ...VIEWS[view], margin: 1.06 }, svgScene);
+  svgR.setSize(W, H); svgR.setClearColor(0xffffff, 0);
+  svgR.render(svgScene, cam);
+  const el = svgR.domElement;
+  holder.traverse(o => { if (o.userData.decal) svgDecal(o, cam, W, H, el); });
+  svgScene.remove(holder);
+  el.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  el.setAttribute('viewBox', `${-W / 2} ${-H / 2} ${W} ${H}`);
+  el.setAttribute('width', W); el.setAttribute('height', H);
+  el.removeAttribute('style');
+  const t = document.createElementNS('http://www.w3.org/2000/svg', 'title'); t.textContent = name; el.insertBefore(t, el.firstChild);
+  return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(el);
+}
+
+
+
+// ---------------------------------------------------------------- 状态配色：异常 = 红 / 离线 = 灰（正常保持原色）
+// 保留明暗层次（亮度），把有色部件整体换成状态色，高光向白色过渡；白 / 灰钢构只染一半，轮廓不糊。
+const STATES = { 红色: '#e5484d', 灰色: null };
+const lum = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+function colorize(r, g, b, S) {                 // 显示空间 0..1
+  const l = Math.pow(lum(r, g, b), 0.72);       // 暗部提亮一点：深蓝的泵换色后不至于发黑
+  if (!S) return [l, l, l];
+  const ls = lum(...S);
+  if (l <= ls) { const f = l / ls; return [S[0] * f, S[1] * f, S[2] * f]; }
+  const t = (l - ls) / (1 - ls); return [S[0] + (1 - S[0]) * t, S[1] + (1 - S[1]) * t, S[2] + (1 - S[2]) * t];
+}
+function recolor(node, stateName) {
+  const hex = STATES[stateName], S = hex ? new THREE.Color(hex).getRGB({}, THREE.SRGBColorSpace) : null;
+  const Sv = S ? [S.r, S.g, S.b] : null, cache = new Map();
+  function conv(m) {
+    if (cache.has(m.uuid)) return cache.get(m.uuid);
+    let out;
+    if (m.userData.baked) {                      // 烘焙水面：整张贴图逐像素换色
+      const cv = document.createElement('canvas'), src = m.userData.baked; cv.width = src.width; cv.height = src.height;
+      const g = cv.getContext('2d', { willReadFrequently: true }); g.drawImage(src, 0, 0);
+      const im = g.getImageData(0, 0, cv.width, cv.height), d = im.data;
+      for (let i = 0; i < d.length; i += 4) { const c = colorize(d[i] / 255, d[i + 1] / 255, d[i + 2] / 255, Sv); d[i] = c[0] * 255; d[i + 1] = c[1] * 255; d[i + 2] = c[2] * 255; }
+      g.putImageData(im, 0, 0);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      out = new THREE.MeshBasicMaterial({ map: tex, name: m.name }); out.userData.baked = cv;
+    } else {
+      out = m.clone();
+      const c = m.color.getRGB({}, THREE.SRGBColorSpace), sat = Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b);
+      if (m.map) {                               // 百叶 / 散热片贴图：只能乘色
+        out.color.setRGB(...(Sv ? [1 - 0.45 * (1 - Sv[0]), 1 - 0.45 * (1 - Sv[1]), 1 - 0.45 * (1 - Sv[2])] : [0.78, 0.78, 0.78]), THREE.SRGBColorSpace);
+      } else {
+        const n = colorize(c.r, c.g, c.b, Sv), k = sat > 0.18 ? 1 : 0.5;
+        out.color.setRGB(c.r + (n[0] - c.r) * k, c.g + (n[1] - c.g) * k, c.b + (n[2] - c.b) * k, THREE.SRGBColorSpace);
+      }
+    }
+    cache.set(m.uuid, out); return out;
+  }
+  const n = node.clone(true);
+  n.traverse(o => { if (o.isMesh && !o.userData.decal) o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material); });
+  return n;
+}
+
+window.__pack = (async () => {
+  await new Promise(r => setTimeout(r, 200));
+  const out = { files: {}, layout: null };
+  const all = [...items, ...libItems];
+  for (const it of all) {
+    const dir = it.kind === 'part' ? 'models/parts' : 'models/equipment';
+    const sp = await sprite(it.node, 512);
+    if (it.kind === 'equipment' || it.kind === 'part') out.files[`sprites/${it.file}.png`] = sp.png;
+    it.sprite = { w: sp.w, h: sp.h };
+    if (it.kind === 'equipment' || it.kind === 'part') for (const v of Object.keys(VIEWS)) out.files[`svg/${v}/${it.file}.svg`] = btoa(unescape(encodeURIComponent(svgOf(it.node, v, 640, it.title))));
+    out.files[`${dir}/${it.file}.glb`] = await glb(it.node);
+  }
+
+  // 状态版：区域 / 设备 / 状态（正常 · 异常 · 离线），不带状态灯，状态靠设备本身区分：
+  //   正常 = 原色；异常 = 整体变红，动画保留；离线 = 整体变灰，GLB 不带任何动画
+  const STATE_DEF = [['正常', null], ['异常', '红色'], ['离线', '灰色']];
+  for (const it of [...items.filter(i => i.kind === 'equipment'), ...libItems]) {
+    const area = it.kind === 'part' ? '通用小件' : it.area;
+    for (const [name, tint] of STATE_DEF) {
+      const node = tint ? recolor(it.node, tint) : it.node.clone(true);
+      if (name === '离线') { const rm = []; node.traverse(o => { if (o.name === 'aeration_bubbles') rm.push(o); }); rm.forEach(o => o.parent.remove(o)); }
+      const flat = node.clone(true); flat.traverse(o => { if (o.name === 'aeration_bubbles') o.visible = false; });
+      const base = `__states/${area}/${it.file}/${name}/${it.file}_${name}`;
+      out.files[`${base}.glb`] = await glb(node, name !== '离线');
+      out.files[`${base}.png`] = (await sprite(flat, 512)).png;
+      out.files[`${base}.svg`] = btoa(unescape(encodeURIComponent(svgOf(flat, 'page', 640, `${it.title}（${name}）`))));
+    }
+  }
+  out.files['models/pipes_all.glb'] = await glb(pipeGroup);
+
+  // 整厂（所有设备 + 平台 + 管线，保持原位置）
+  const full = new THREE.Group(); full.name = 'plant';
+  for (const it of items) { const c = it.node.clone(true); c.position.copy(it.anchor); c.name = it.id; full.add(c); }
+  full.add(pipeGroup.clone(true));
+  out.files['models/plant_full.glb'] = await glb(full);
+  full.updateMatrixWorld(true);
+  full.traverse(o => { if (o.name === 'aeration_bubbles') o.visible = false; });
+  const ov = await sprite(full, 2400, { margin: 1.03 });
+  out.files['sprites/_overview.png'] = ov.png;
+
+  // 点位：PID 图纸位号（仪表 / 设备）+ 画面上的数值牌；设备给 运行 / 自动 / 故障 三个开关量，变频泵加频率
+  const tags = [], seen = new Set();
+  const add = t => { if (!seen.has(t.id)) { seen.add(t.id); tags.push(t); } };
+  for (const d of Object.values(Sim.DEV)) {
+    if (d.kind === 'inst') add({ id: d.tag.replace(/\s+/g, ''), name: d.name, unit: d.unit || '', type: d.id.startsWith('LSA') ? 'DI' : 'AI', position: null });
+    else if (d.kind === 'valve') {
+      for (const [k, nm] of [['open', '开启'], ['auto', '自动'], ['fault', '故障']]) add({ id: `${d.tag}.${k}`, name: `${d.tag} ${d.name} ${nm}`, unit: '', type: 'DI', position: null });
+    } else if (d.kind === 'pump' || d.kind === 'mot') {
+      for (const [k, nm] of [['run', '运行'], ['auto', '自动'], ['fault', '故障']]) add({ id: `${d.tag}.${k}`, name: `${d.tag} ${d.name} ${nm}`, unit: '', type: 'DI', position: null });
+      if (d.vfd) add({ id: `${d.tag}.hz`, name: `${d.tag} ${d.name} 运行频率`, unit: 'Hz', type: 'AI', position: null });
+    } else if (d.kind === 'press') {
+      add({ id: `${d.tag}.phase`, name: `${d.tag} ${d.name} 工序（待机/进料/压榨/卸料）`, unit: '', type: 'STRING', position: null });
+      add({ id: `${d.tag}.pressure`, name: `${d.tag} ${d.name} 腔内压力`, unit: 'MPa', type: 'AI', position: null });
+    }
+  }
+  for (const [id, name, unit] of EXTRA_TAGS) add({ id, name, unit, type: 'AI', position: null });
+  out.tags = tags;
+
+  out.layout = {
+    meta: { unit: 'm', up: 'Y', handedness: 'right', note: 'position = 设备底面中心的世界坐标；模型文件已按该锚点归零。x 向右，z 朝向观察者，y 向上。' },
+    equipment: items.filter(i => i.kind === 'equipment').map(i => ({ id: i.id, name: i.title, area: i.area, model: `models/equipment/${i.file}.glb`, sprite: `sprites/${i.file}.png`, svg: { page: `svg/page/${i.file}.svg`, iso: `svg/iso/${i.file}.svg`, front: `svg/front/${i.file}.svg`, top: `svg/top/${i.file}.svg` }, position: i.anchor.toArray().map(r3), size: i.size.toArray().map(r3), signals: i.rows })),
+    platforms: items.filter(i => i.kind === 'platform').map(i => ({ id: i.id, model: `models/equipment/${i.file}.glb`, position: i.anchor.toArray().map(r3), size: i.size.toArray().map(r3) })),
+    markers: items.filter(i => i.kind === 'marker').map(i => ({ id: i.id, model: `models/equipment/${i.file}.glb`, position: i.anchor.toArray().map(r3), size: i.size.toArray().map(r3) })),
+    parts: libItems.map(i => ({ id: i.id, name: i.title, model: `models/parts/${i.file}.glb`, sprite: `sprites/${i.file}.png`, svg: { page: `svg/page/${i.file}.svg`, iso: `svg/iso/${i.file}.svg`, front: `svg/front/${i.file}.svg`, top: `svg/top/${i.file}.svg` }, size: i.size.toArray().map(r3) })),
+    pipes: pipeList,
+    labels: plant.labels.map(l => ({ ...l, pos: l.pos.toArray().map(r3) })),
+    pumps: plant.pumps,
+  };
+  return out;
+})();
+</script></body></html>
