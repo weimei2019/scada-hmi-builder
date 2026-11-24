@@ -1,7 +1,7 @@
 {
   "meta": {
-    "generated_at": "2026-11-23T09:04:03+08:00",
-    "generated_at_display": "2026-11-23 09:04 (UTC+8)",
+    "generated_at": "2026-11-24T09:12:45+08:00",
+    "generated_at_display": "2026-11-24 09:12 (UTC+8)",
     "pool_size": 556,
     "kept_after_filter": 541,
     "top_n": 20,
@@ -23,8 +23,8 @@
       "full_name": "morluto/rea",
       "url": "https://github.com/morluto/rea",
       "description": "Reverse engineer anything with agents, from app behavior down to native binaries.",
-      "stars": 474114,
-      "forks": 115601,
+      "stars": 475622,
+      "forks": 115903,
       "language": "TypeScript",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -37,18 +37,18 @@
         "dsh-plugin",
         "html"
       ],
-      "pushed_at": "2026-11-23T01:03:50Z",
+      "pushed_at": "2026-11-24T01:11:57Z",
       "created_at": "2026-04-14T00:51:32Z",
       "avatar": "https://avatars.githubusercontent.com/u/76467478?v=4",
-      "delta": 1307
+      "delta": 1508
     },
     {
       "rank": 2,
       "full_name": "openclaw/openclaw",
       "url": "https://github.com/openclaw/openclaw",
       "description": "The AI that really does things. Any OS. Any Platform. The lobster way. 🦞 ",
-      "stars": 395065,
-      "forks": 82958,
+      "stars": 395116,
+      "forks": 82970,
       "language": "TypeScript",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -60,18 +60,18 @@
         "own-your-data",
         "personal"
       ],
-      "pushed_at": "2026-11-23T01:03:41Z",
+      "pushed_at": "2026-11-24T01:11:43Z",
       "created_at": "2025-11-24T10:16:47Z",
       "avatar": "https://avatars.githubusercontent.com/u/252820863?v=4",
-      "delta": 74
+      "delta": 51
     },
     {
       "rank": 3,
       "full_name": "obra/superpowers",
       "url": "https://github.com/obra/superpowers",
       "description": "An agentic skills framework & software development methodology that works.",
-      "stars": 324168,
-      "forks": 28758,
+      "stars": 325080,
+      "forks": 28835,
       "language": "Shell",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -87,15 +87,15 @@
       "pushed_at": "2026-11-03T23:24:58Z",
       "created_at": "2025-10-09T19:45:18Z",
       "avatar": "https://avatars.githubusercontent.com/u/45416?v=4",
-      "delta": 435
+      "delta": 912
     },
     {
       "rank": 4,
       "full_name": "affaan-m/ECC",
       "url": "https://github.com/affaan-m/ECC",
       "description": "The agent harness performance optimization system. Skills, instincts, memory, security, and research-first development for Claude Code, Codex, Opencode, Cursor and beyond.",
-      "stars": 309036,
-      "forks": 45467,
+      "stars": 309591,
+      "forks": 45542,
       "language": "JavaScript",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -108,18 +108,18 @@
         "mcp",
         "productivity"
       ],
-      "pushed_at": "2026-11-20T01:13:45Z",
+      "pushed_at": "2026-11-23T04:55:48Z",
       "created_at": "2026-01-18T00:51:51Z",
       "avatar": "https://avatars.githubusercontent.com/u/124439313?v=4",
-      "delta": 655
+      "delta": 555
     },
     {
       "rank": 5,
       "full_name": "deepseek-ai/deepseek-harness",
       "url": "https://github.com/deepseek-ai/deepseek-harness",
       "description": "DeepSeek Harness: Everything is a Plugin.",
-      "stars": 285559,
-      "forks": 35523,
+      "stars": 286080,
+      "forks": 35617,
       "language": "TypeScript",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -131,15 +131,15 @@
       "pushed_at": "2026-11-22T11:00:05Z",
       "created_at": "2026-08-13T11:56:32Z",
       "avatar": "https://avatars.githubusercontent.com/u/148330874?v=4",
-      "delta": 466
+      "delta": 521
     },
     {
       "rank": 6,
       "full_name": "NousResearch/hermes-agent",
       "url": "https://github.com/NousResearch/hermes-agent",
       "description": "The agent that grows with you",
-      "stars": 265428,
-      "forks": 60026,
+      "stars": 265674,
+      "forks": 60134,
       "language": "Python",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -152,18 +152,18 @@
         "claude-code",
         "codex"
       ],
-      "pushed_at": "2026-11-23T00:46:13Z",
+      "pushed_at": "2026-11-24T01:06:55Z",
       "created_at": "2025-07-22T22:22:28Z",
       "avatar": "https://avatars.githubusercontent.com/u/134168893?v=4",
-      "delta": 220
+      "delta": 246
     },
     {
       "rank": 7,
       "full_name": "n8n-io/n8n",
       "url": "https://github.com/n8n-io/n8n",
       "description": "Fair-code workflow automation platform with native AI capabilities. Combine visual building with custom code, self-host or cloud, 400+ integrations.",
-      "stars": 211841,
-      "forks": 61629,
+      "stars": 211842,
+      "forks": 61636,
       "language": "TypeScript",
       "category": "工作流 / 自动化",
       "topics": [
@@ -176,18 +176,18 @@
         "integration-framework",
         "integrations"
       ],
-      "pushed_at": "2026-11-23T00:36:56Z",
+      "pushed_at": "2026-11-24T01:05:43Z",
       "created_at": "2019-06-22T09:24:21Z",
       "avatar": "https://avatars.githubusercontent.com/u/45487711?v=4",
-      "delta": 185
+      "delta": 1
     },
     {
       "rank": 8,
       "full_name": "firecrawl/firecrawl",
       "url": "https://github.com/firecrawl/firecrawl",
       "description": "Knowledge infrastructure to make your agents smarter. Search, scrape and access 550+ data providers through one API.",
-      "stars": 207043,
-      "forks": 10817,
+      "stars": 207937,
+      "forks": 10866,
       "language": "TypeScript",
       "category": "RAG / 检索与数据",
       "topics": [
@@ -200,18 +200,18 @@
         "data-extraction",
         "html-to-markdown"
       ],
-      "pushed_at": "2026-11-22T18:47:08Z",
+      "pushed_at": "2026-11-24T01:09:24Z",
       "created_at": "2024-04-15T21:02:29Z",
       "avatar": "https://avatars.githubusercontent.com/u/135057108?v=4",
-      "delta": 831
+      "delta": 894
     },
     {
       "rank": 9,
       "full_name": "tensorflow/tensorflow",
       "url": "https://github.com/tensorflow/tensorflow",
       "description": "An Open Source Machine Learning Framework for Everyone",
-      "stars": 201776,
-      "forks": 77416,
+      "stars": 201708,
+      "forks": 77404,
       "language": "C++",
       "category": "模型框架与推理",
       "topics": [
@@ -224,18 +224,18 @@
         "python",
         "tensorflow"
       ],
-      "pushed_at": "2026-11-22T18:11:10Z",
+      "pushed_at": "2026-11-24T01:00:25Z",
       "created_at": "2015-11-07T01:19:20Z",
       "avatar": "https://avatars.githubusercontent.com/u/15658638?v=4",
-      "delta": 100
+      "delta": -68
     },
     {
       "rank": 10,
       "full_name": "DietrichGebert/ponytail",
       "url": "https://github.com/DietrichGebert/ponytail",
       "description": "Makes your AI agent think like the laziest senior dev in the room. The best code is the code you never wrote.",
-      "stars": 196893,
-      "forks": 11108,
+      "stars": 197525,
+      "forks": 11170,
       "language": "JavaScript",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -251,15 +251,15 @@
       "pushed_at": "2026-11-22T02:31:58Z",
       "created_at": "2026-06-12T00:52:37Z",
       "avatar": "https://avatars.githubusercontent.com/u/137048761?v=4",
-      "delta": 509
+      "delta": 632
     },
     {
       "rank": 11,
       "full_name": "Significant-Gravitas/AutoGPT",
       "url": "https://github.com/Significant-Gravitas/AutoGPT",
       "description": "AutoGPT is the vision of accessible AI for everyone, to use and to build on. Our mission is to provide the tools, so that you can focus on what matters.",
-      "stars": 188136,
-      "forks": 45825,
+      "stars": 188155,
+      "forks": 45821,
       "language": "Python",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -272,18 +272,18 @@
         "gpt",
         "llama-api"
       ],
-      "pushed_at": "2026-11-23T00:53:47Z",
+      "pushed_at": "2026-11-24T01:07:04Z",
       "created_at": "2023-03-16T09:21:07Z",
       "avatar": "https://avatars.githubusercontent.com/u/130738209?v=4",
-      "delta": 10
+      "delta": 19
     },
     {
       "rank": 12,
       "full_name": "ollama/ollama",
       "url": "https://github.com/ollama/ollama",
       "description": "Get up and running with Kimi, GLM, MiniMax, DeepSeek, gpt-oss, Qwen, Gemma and other models.",
-      "stars": 187889,
-      "forks": 19143,
+      "stars": 187914,
+      "forks": 19153,
       "language": "Go",
       "category": "模型框架与推理",
       "topics": [
@@ -296,18 +296,18 @@
         "llama",
         "llm"
       ],
-      "pushed_at": "2026-11-22T10:10:02Z",
+      "pushed_at": "2026-11-24T00:52:01Z",
       "created_at": "2023-06-26T19:39:32Z",
       "avatar": "https://avatars.githubusercontent.com/u/151674099?v=4",
-      "delta": 97
+      "delta": 25
     },
     {
       "rank": 13,
       "full_name": "huggingface/transformers",
       "url": "https://github.com/huggingface/transformers",
       "description": "🤗 Transformers: the model-definition framework for state-of-the-art machine learning models in text, vision, audio, and multimodal models, for both inference and training. ",
-      "stars": 169399,
-      "forks": 35268,
+      "stars": 169274,
+      "forks": 35276,
       "language": "Python",
       "category": "模型框架与推理",
       "topics": [
@@ -320,18 +320,18 @@
         "llm",
         "machine-learning"
       ],
-      "pushed_at": "2026-11-23T00:45:39Z",
+      "pushed_at": "2026-11-24T00:17:32Z",
       "created_at": "2018-10-29T13:56:00Z",
       "avatar": "https://avatars.githubusercontent.com/u/25720743?v=4",
-      "delta": 87
+      "delta": -125
     },
     {
       "rank": 14,
       "full_name": "AUTOMATIC1111/stable-diffusion-webui",
       "url": "https://github.com/AUTOMATIC1111/stable-diffusion-webui",
       "description": "Stable Diffusion web UI",
-      "stars": 165372,
-      "forks": 31081,
+      "stars": 165370,
+      "forks": 31069,
       "language": "Python",
       "category": "生成式内容",
       "topics": [
@@ -347,15 +347,15 @@
       "pushed_at": "2026-03-02T07:00:53Z",
       "created_at": "2022-08-22T14:05:26Z",
       "avatar": "https://avatars.githubusercontent.com/u/20920490?v=4",
-      "delta": 2
+      "delta": -2
     },
     {
       "rank": 15,
       "full_name": "langgenius/dify",
       "url": "https://github.com/langgenius/dify",
       "description": "Build Agentic workflows, RAG pipelines, with rich AI model and tool support on one collaborative workspace. Deploy on cloud, VPC, or self-hosted, so teams move from prototype to production without rebuilding the stack.",
-      "stars": 161690,
-      "forks": 25533,
+      "stars": 161769,
+      "forks": 25538,
       "language": "Python",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -368,18 +368,18 @@
         "claude",
         "deepseek"
       ],
-      "pushed_at": "2026-11-22T14:54:25Z",
+      "pushed_at": "2026-11-23T23:07:35Z",
       "created_at": "2023-04-12T07:40:24Z",
       "avatar": "https://avatars.githubusercontent.com/u/127165244?v=4",
-      "delta": 61
+      "delta": 79
     },
     {
       "rank": 16,
       "full_name": "open-webui/open-webui",
       "url": "https://github.com/open-webui/open-webui",
       "description": "User-friendly AI Interface (Supports Ollama, OpenAI API, ...)",
-      "stars": 159286,
-      "forks": 23108,
+      "stars": 159366,
+      "forks": 23128,
       "language": "Svelte",
       "category": "模型框架与推理",
       "topics": [
@@ -392,18 +392,18 @@
         "ollama",
         "ollama-webui"
       ],
-      "pushed_at": "2026-11-22T23:30:00Z",
+      "pushed_at": "2026-11-23T22:11:40Z",
       "created_at": "2023-10-06T22:08:27Z",
       "avatar": "https://avatars.githubusercontent.com/u/158137808?v=4",
-      "delta": 58
+      "delta": 80
     },
     {
       "rank": 17,
       "full_name": "langflow-ai/langflow",
       "url": "https://github.com/langflow-ai/langflow",
       "description": "Langflow is a powerful tool for building and deploying AI-powered agents and workflows.",
-      "stars": 156852,
-      "forks": 10433,
+      "stars": 156885,
+      "forks": 10442,
       "language": "Python",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -414,18 +414,18 @@
         "multiagent",
         "react-flow"
       ],
-      "pushed_at": "2026-11-23T00:27:24Z",
+      "pushed_at": "2026-11-23T21:58:11Z",
       "created_at": "2023-02-08T22:28:03Z",
       "avatar": "https://avatars.githubusercontent.com/u/85702467?v=4",
-      "delta": 23
+      "delta": 33
     },
     {
       "rank": 18,
       "full_name": "Graphify-Labs/graphify",
       "url": "https://github.com/Graphify-Labs/graphify",
       "description": "Turn any codebase, with its docs, SQL schemas, configs, and PDFs, into a queryable knowledge graph. A /graphify skill for Claude Code, Cursor, Codex, and Gemini CLI: local deterministic AST parsing, every edge explained, no vector store.",
-      "stars": 152062,
-      "forks": 14618,
+      "stars": 152542,
+      "forks": 14662,
       "language": "Python",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -438,18 +438,18 @@
         "codex",
         "cursor"
       ],
-      "pushed_at": "2026-11-23T00:39:23Z",
+      "pushed_at": "2026-11-23T19:14:02Z",
       "created_at": "2026-04-03T15:49:07Z",
       "avatar": "https://avatars.githubusercontent.com/u/297659074?v=4",
-      "delta": 440
+      "delta": 480
     },
     {
       "rank": 19,
       "full_name": "github/spec-kit",
       "url": "https://github.com/github/spec-kit",
       "description": "💫 Toolkit to help you get started with SDD or any other process!",
-      "stars": 151042,
-      "forks": 13568,
+      "stars": 151168,
+      "forks": 13581,
       "language": "Python",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -461,18 +461,18 @@
         "spec",
         "spec-driven"
       ],
-      "pushed_at": "2026-11-22T17:35:25Z",
+      "pushed_at": "2026-11-23T21:54:17Z",
       "created_at": "2025-08-21T22:54:31Z",
       "avatar": "https://avatars.githubusercontent.com/u/9919?v=4",
-      "delta": 102
+      "delta": 126
     },
     {
       "rank": 20,
       "full_name": "langchain-ai/langchain",
       "url": "https://github.com/langchain-ai/langchain",
       "description": "The agent engineering platform.",
-      "stars": 149991,
-      "forks": 25157,
+      "stars": 149941,
+      "forks": 25161,
       "language": "Python",
       "category": "AI Agent / 编程助手",
       "topics": [
@@ -485,71 +485,71 @@
         "enterprise",
         "framework"
       ],
-      "pushed_at": "2026-11-22T08:30:04Z",
+      "pushed_at": "2026-11-23T21:28:36Z",
       "created_at": "2022-10-17T02:58:36Z",
       "avatar": "https://avatars.githubusercontent.com/u/126733545?v=4",
-      "delta": 39
+      "delta": -50
     }
   ],
   "excluded": [
     {
       "full_name": "f/prompts.chat",
-      "stars": 178283,
+      "stars": 178327,
       "reason": "Prompt 合集，非可运行软件项目"
     },
     {
       "full_name": "Snailclimb/JavaGuide",
-      "stars": 159643,
+      "stars": 159654,
       "reason": "Java 面试指南，AI 仅为附带章节"
     },
     {
       "full_name": "x1xhlol/system-prompts-and-models-of-ai-tools",
-      "stars": 144820,
+      "stars": 144832,
       "reason": "系统提示词合集，非软件项目"
     },
     {
       "full_name": "shadcn-ui/ui",
-      "stars": 128772,
+      "stars": 128865,
       "reason": "前端 UI 组件库，与 AI 无实质关联"
     },
     {
       "full_name": "microsoft/generative-ai-for-beginners",
-      "stars": 124021,
+      "stars": 124090,
       "reason": "教学课程"
     },
     {
       "full_name": "supabase/supabase",
-      "stars": 115347,
+      "stars": 115311,
       "reason": "通用 Postgres 平台，与 AI 无实质关联"
     },
     {
       "full_name": "rasbt/LLMs-from-scratch",
-      "stars": 108841,
+      "stars": 108924,
       "reason": "教材式教程，非工程可用项目"
     },
     {
       "full_name": "D4Vinci/Scrapling",
-      "stars": 105035,
+      "stars": 105296,
       "reason": "通用爬虫框架，AI 属性弱"
     },
     {
       "full_name": "punkpeye/awesome-mcp-servers",
-      "stars": 98396,
+      "stars": 98431,
       "reason": "Awesome 清单，无实际代码实现"
     },
     {
       "full_name": "microsoft/ML-For-Beginners",
-      "stars": 92407,
+      "stars": 92432,
       "reason": "教学课程"
     },
     {
       "full_name": "opencv/opencv",
-      "stars": 91687,
+      "stars": 91694,
       "reason": "通用计算机视觉库，非 AI 原生项目"
     },
     {
       "full_name": "datawhalechina/hello-agents",
-      "stars": 87629,
+      "stars": 87752,
       "reason": "教程，非可运行项目"
     }
   ]
