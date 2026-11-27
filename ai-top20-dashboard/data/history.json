@@ -298,5 +298,30 @@
    "github/spec-kit": 151385,
    "langchain-ai/langchain": 149998
   }
+ },
+ {
+  "date": "2026-11-27",
+  "stars": {
+   "morluto/rea": 479799,
+   "openclaw/openclaw": 395300,
+   "obra/superpowers": 327496,
+   "affaan-m/ECC": 311314,
+   "deepseek-ai/deepseek-harness": 287625,
+   "NousResearch/hermes-agent": 266400,
+   "n8n-io/n8n": 212312,
+   "firecrawl/firecrawl": 210952,
+   "tensorflow/tensorflow": 201862,
+   "DietrichGebert/ponytail": 199376,
+   "ollama/ollama": 188241,
+   "Significant-Gravitas/AutoGPT": 188204,
+   "huggingface/transformers": 169377,
+   "AUTOMATIC1111/stable-diffusion-webui": 165391,
+   "langgenius/dify": 161958,
+   "open-webui/open-webui": 159648,
+   "langflow-ai/langflow": 156974,
+   "Graphify-Labs/graphify": 153863,
+   "github/spec-kit": 151659,
+   "langchain-ai/langchain": 150041
+  }
  }
 ]
